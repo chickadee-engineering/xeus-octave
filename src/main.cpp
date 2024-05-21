@@ -22,6 +22,7 @@
 #include <string_view>
 
 #include <xeus-zmq/xserver_zmq.hpp>
+#include <xeus-zmq/xzmq_context.hpp>
 #include <xeus/xeus_context.hpp>
 #include <xeus/xhelper.hpp>
 #include <xeus/xkernel.hpp>
@@ -52,18 +53,17 @@ int main(int argc, char* argv[])
   }
 #endif
 
-  auto interpreter = xeus::xkernel::interpreter_ptr(new xeus_octave::xoctave_interpreter());
-  xeus::register_interpreter(interpreter.get());
-  auto config = xeus::load_configuration(xeus::extract_filename(argc, argv));
-  std::cout << xeus::print_starting_message(config);
+  xeus::xconfiguration config = xeus::load_configuration(xeus::extract_filename(argc, argv));
 
-  auto kernel = xeus::xkernel(
-    /* config= */ std::move(config),
-    /* user_name= */ xeus::get_user_name(),
-    /* context= */ xeus::make_context<zmq::context_t>(),
-    /* interpreter= */ std::move(interpreter),
-    /* sbuilder= */ xeus::make_xserver_zmq
-  );
+  auto context = xeus::make_zmq_context();
+
+  using interpreter_ptr = std::unique_ptr<xeus_octave::xoctave_interpreter>;
+  interpreter_ptr interpreter = interpreter_ptr(new xeus_octave::xoctave_interpreter());
+  xeus::xkernel kernel(config,
+                       xeus::get_user_name(),
+                       std::move(context),
+                       std::move(interpreter),
+                       xeus::make_xserver_zmq);
   kernel.start();
 
   return 0;
